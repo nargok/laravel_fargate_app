@@ -23,3 +23,34 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.PROD_AWS_ASSUME_ROLE_ARN }}
           role-duration-seconds: 1800
+      - name: Set env vars for prod
+        # if: github.ref == 'refs/heads/main'
+        run: echo "ENV_NAME=pod" >> &GITHUB_ENV
+
+      - uses: actions/checkout@v2
+
+      # start containers
+      - run: docker-compose up -d --build app web
+
+      # use chache
+      - name: Cache composer
+        id: cache-composer
+        uses: actions/cache@v2
+        with:
+          path: backend/vendor
+          key: compose-v1-${{ hashFiles('backend/compose.lock') }}
+
+      # install PHP packages
+      # -T option is required to disable pseudo-tty allocation, since GitHub Action does not have tty.
+      - run: docker-compose exec -T app composer install -n --prefer-dist --no-dev
+        if: ${{ !steps.cache-composer.outputs.cache-hit }}
+
+      - name: Cache npm
+        id: cache-npm-ci
+        uses: actions/cache@v2
+        with:
+          path: backend/node_modules
+          key: npm-v1-${{ hashFiles('backend/package-lock.json') }}
+
+      - run: docker-compose exec -T web npm ci
+        if: ${{ !steps.cache-npm-ci.outputs.cache-hit }}
