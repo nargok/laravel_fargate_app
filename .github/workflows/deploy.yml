@@ -35,6 +35,10 @@ jobs:
       # start containers
       - run: docker-compose up -d --build app web
 
+      # Fix npm permissions
+      - name: Fix npm permissions
+        run: sudo chown -R $USER:$USER ~/.npm
+
       # use chache
       - name: Cache composer
         id: cache-composer
@@ -55,14 +59,11 @@ jobs:
           path: backend/node_modules
           key: npm-v1-${{ hashFiles('backend/package-lock.json') }}
 
-      - run: docker-compose exec -T web npm ci
+      - run: docker-compose exec -T -u $USER web npm ci
         if: ${{ !steps.cache-npm-ci.outputs.cache-hit }}
 
-      - name: Fix npm permissions
-        run: sudo chown -R $USER:$USER ~/.npm
-
       # transcompine JS
-      - run: docker-compose exec -T web npm run prod
+      - run: docker-compose exec -T -u $USER web npm run prod
 
       # Login to AWS ECR
       - uses: aws-actions/amazon-ecr-login@v1
