@@ -58,6 +58,9 @@ jobs:
       - run: docker-compose exec -T web npm ci
         if: ${{ !steps.cache-npm-ci.outputs.cache-hit }}
 
+      - name: Fix npm permissions
+        run: sudo chown -R $USER:$USER ~/.npm
+
       # transcompine JS
       - run: docker-compose exec -T web npm run prod
 
